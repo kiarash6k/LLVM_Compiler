@@ -22,6 +22,8 @@ KEYWORD(elif                        , KEYALL)
 KEYWORD(else                        , KEYALL)
 KEYWORD(int                         , KEYALL)
 KEYWORD(loop                        , KEYALL)
+KEYWORD(IMPORT                      , KEYALL)
+KEYWORD(FROM                        , KEYALL)
 
 PUNCTUATOR(plus,                "+")
 PUNCTUATOR(minus,               "-")
