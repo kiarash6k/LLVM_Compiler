@@ -66,7 +66,7 @@ class Parser {
   bool parseAddOperator(OperatorInfo &Op);
   bool parseTerm(Expr *&E);
   bool parseMulOperator(OperatorInfo &Op);
-  bool parseFactor(Expr *&E);
+  bool parseEqualOps(Decl *&D);
   bool parseIdentList(IdentList &Ids);
 
 public:

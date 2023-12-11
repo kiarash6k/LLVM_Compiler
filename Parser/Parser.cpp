@@ -191,7 +191,7 @@ bool Parser::parseStatement(StmtList &Stmts) {
       Decl *D;
       Expr *E = nullptr;
       SMLoc Loc = Tok.getLocation();
-      if (parseQualident(D))
+      if (parseEqualOps(D))
         goto _error;
       if (Tok.is(tok::colonequal)) {
         advance();
@@ -576,6 +576,40 @@ _error:
       tok::greaterequal, tok::kw_and, tok::kw_div,
       tok::kw_else, tok::kw_end, tok::kw_mod,
       tok::kw_or, tok::kw_begin)) {
+    advance();
+    if (Tok.is(tok::eof))
+      return true;
+  }
+  return false;
+}
+
+bool Parser::parseEqualOps(Decl *&D) {
+  {
+    D = nullptr;
+    if (expect(tok::identifier))
+      goto _error;
+    D = Actions.actOnQualIdentPart(D, Tok.getLocation(),
+                                   Tok.getIdentifier());
+    advance();
+    while (Tok.is(tok::period) &&
+           (isa<ModuleDeclaration>(D))) {
+      advance();
+      if (expect(tok::identifier))
+        goto _error;
+      D = Actions.actOnQualIdentPart(D, Tok.getLocation(),
+                                     Tok.getIdentifier());
+      advance();
+    }
+    return false;
+  }
+_error:
+  while (!Tok.isOneOf(
+      tok::hash, tok::l_paren, tok::r_paren, tok::star,
+      tok::plus, tok::comma, tok::minus, tok::slash,
+      tok::colonequal, tok::semi, tok::less, tok::lessequal,
+      tok::equal, tok::greater, tok::greaterequal,
+      tok::kw_and, tok::kw_div, tok::kw_else,
+      tok::kw_end, tok::kw_mod, tok::kw_or, tok::kw_begin)) {
     advance();
     if (Tok.is(tok::eof))
       return true;
