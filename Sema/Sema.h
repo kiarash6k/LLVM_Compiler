@@ -1,12 +1,12 @@
-#ifndef TINYLANG_SEMA_SEMA_H
-#define TINYLANG_SEMA_SEMA_H
+#ifndef COMP_SEMA_SEMA_H
+#define COMP_SEMA_SEMA_H
 
-#include "tinylang/AST/AST.h"
-#include "tinylang/Basic/Diagnostic.h"
-#include "tinylang/Sema/Scope.h"
+#include "comp/AST/AST.h"
+#include "comp/Basic/Diagnostic.h"
+#include "comp/Sema/Scope.h"
 #include <memory>
 
-namespace tinylang {
+namespace comp {
 
 class Sema {
   friend class EnterDeclScope;
@@ -84,5 +84,5 @@ public:
   }
   ~EnterDeclScope() { Semantics.leaveScope(); }
 };
-} // namespace tinylang
+} // namespace comp
 #endif

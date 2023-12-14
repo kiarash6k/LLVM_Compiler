@@ -1,7 +1,7 @@
-#include "tinylang/Sema/Sema.h"
+#include "comp/Sema/Sema.h"
 #include "llvm/Support/raw_ostream.h"
 
-using namespace tinylang;
+using namespace comp;
 
 void Sema::enterScope(Decl *D) {
   CurrentScope = new Scope(CurrentScope);
@@ -22,14 +22,12 @@ bool Sema::isOperatorForType(tok::TokenKind Op,
   case tok::plus:
   case tok::minus:
   case tok::star:
-  case tok::kw_DIV:
-  case tok::kw_MOD:
+  case tok::mod:
     return Ty == IntegerType;
   case tok::slash:
     return false; // REAL not implemented
-  case tok::kw_AND:
-  case tok::kw_OR:
-  case tok::kw_NOT:
+  case tok::kw_and:
+  case tok::kw_or:
     return Ty == BooleanType;
   default:
     llvm_unreachable("Unknown operator");
@@ -98,11 +96,7 @@ void Sema::actOnVariableDeclaration(DeclList &Decls,
 void Sema::actOnAssignment(StmtList &Stmts, SMLoc Loc,
                            Decl *D, Expr *E) {
   if (auto Var = dyn_cast<VariableDeclaration>(D)) {
-    if (Var->getType() != E->getType()) {
-      Diags.report(
-          Loc, diag::err_types_for_operator_not_compatible,
-          tok::getPunctuatorSpelling(tok::colonequal));
-    }
+    if (Var->getType() != E->getType()) {}
     Stmts.push_back(new AssignmentStatement(Var, E));
   } else if (D) {
     // TODO Emit error
@@ -169,7 +163,7 @@ Expr *Sema::actOnSimpleExpression(Expr *Left, Expr *Right,
   }
   TypeDeclaration *Ty = Left->getType();
   bool IsConst = Left->isConst() && Right->isConst();
-  if (IsConst && Op.getKind() == tok::kw_OR) {
+  if (IsConst && Op.getKind() == tok::kw_or) {
     BooleanLiteral *L = dyn_cast<BooleanLiteral>(Left);
     BooleanLiteral *R = dyn_cast<BooleanLiteral>(Right);
     return L->getValue() || R->getValue() ? TrueLiteral
@@ -195,7 +189,7 @@ Expr *Sema::actOnTerm(Expr *Left, Expr *Right,
   }
   TypeDeclaration *Ty = Left->getType();
   bool IsConst = Left->isConst() && Right->isConst();
-  if (IsConst && Op.getKind() == tok::kw_AND) {
+  if (IsConst && Op.getKind() == tok::kw_and) {
     BooleanLiteral *L = dyn_cast<BooleanLiteral>(Left);
     BooleanLiteral *R = dyn_cast<BooleanLiteral>(Right);
     return L->getValue() && R->getValue() ? TrueLiteral
@@ -214,11 +208,6 @@ Expr *Sema::actOnPrefixExpression(Expr *E,
         Op.getLocation(),
         diag::err_types_for_operator_not_compatible,
         tok::getPunctuatorSpelling(Op.getKind()));
-  }
-
-  if (E->isConst() && Op.getKind() == tok::kw_NOT) {
-    BooleanLiteral *L = dyn_cast<BooleanLiteral>(E);
-    return L->getValue() ? FalseLiteral : TrueLiteral;
   }
 
   if (Op.getKind() == tok::minus) {

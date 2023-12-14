@@ -1,7 +1,7 @@
-#include "tinylang/Parser/Parser.h"
-#include "tinylang/Basic/TokenKinds.h"
+#include "comp/Parser/Parser.h"
+#include "comp/Basic/TokenKinds.h"
 
-using namespace tinylang;
+using namespace comp;
 
 namespace {
 OperatorInfo fromTok(Token Tok) {
@@ -12,6 +12,46 @@ OperatorInfo fromTok(Token Tok) {
 Parser::Parser(Lexer &Lex, Sema &Actions)
     : Lex(Lex), Actions(Actions) {
   advance();
+}
+
+ModuleDeclaration *Parser::parse() {
+  ModuleDeclaration *ModDecl = nullptr;
+  parseCompilationUnit(ModDecl);
+  return ModDecl;
+}
+
+bool Parser::parseCompilationUnit(ModuleDeclaration *&D) {
+  {
+    if (expect(tok::identifier))
+      goto _error;
+    // D = Actions.actOnModuleDeclaration(Tok.getLocation(),
+    //                                    Tok.getIdentifier());
+
+    EnterDeclScope S(Actions, D);
+    advance();
+    if (consume(tok::semi))
+      goto _error;
+    while (Tok.isOneOf(tok::kw_FROM, tok::kw_IMPORT)) {
+      if (parseImport())
+        goto _error;
+    }
+    DeclList Decls;
+    StmtList Stmts;
+    if (parseBlock(Decls, Stmts))
+      goto _error;
+    if (expect(tok::identifier))
+      goto _error;
+    // Actions.actOnModuleDeclaration(D, Tok.getLocation(),
+    //                                Tok.getIdentifier(),
+    //                                Decls, Stmts);
+    advance();
+    return false;
+  }
+_error:
+  while (!Tok.is(tok::eof)) {
+    advance();
+  }
+  return false;
 }
 
 bool Parser::parsePower(Expr *&E) {
@@ -144,6 +184,8 @@ _error:
   return false;
 }
 
+
+
 bool Parser::parseFormalParameterList(
     FormalParamList &Params) {
   {
@@ -158,6 +200,34 @@ bool Parser::parseFormalParameterList(
   }
 _error:
   while (!Tok.is(tok::r_paren)) {
+    advance();
+    if (Tok.is(tok::eof))
+      return true;
+  }
+  return false;
+}
+
+bool Parser::parseFormalParameter(FormalParamList &Params) {
+  {
+    IdentList Ids;
+    Decl *D;
+    bool IsVar = false;
+    if (Tok.is(tok::kw_int)) {
+      IsVar = true;
+      advance();
+    }
+    if (parseIdentList(Ids))
+      goto _error;
+    if (consume(tok::colon))
+      goto _error;
+    if (parseEqualOps(D))
+      goto _error;
+    Actions.actOnFormalParameterDeclaration(Params, Ids, D,
+                                            IsVar);
+    return false;
+  }
+_error:
+  while (!Tok.isOneOf(tok::r_paren, tok::semi)) {
     advance();
     if (Tok.is(tok::eof))
       return true;
@@ -193,27 +263,22 @@ bool Parser::parseStatement(StmtList &Stmts) {
       SMLoc Loc = Tok.getLocation();
       if (parseEqualOps(D))
         goto _error;
-      if (Tok.is(tok::colonequal)) {
-        advance();
-        if (parseExpression(E))
-          goto _error;
-        Actions.actOnAssignment(Stmts, Loc, D, E);
-      } else if (Tok.is(tok::l_paren)) {
-        ExprList Exprs;
-        if (Tok.is(tok::l_paren)) {
-          advance();
-          if (Tok.isOneOf(tok::l_paren, tok::plus,
-                          tok::minus, tok::kw_NOT,
-                          tok::identifier,
-                          tok::integer_literal)) {
-            if (parseExpList(Exprs))
-              goto _error;
-          }
-          if (consume(tok::r_paren))
-            goto _error;
-        }
-        Actions.actOnProcCall(Stmts, Loc, D, Exprs);
-      }
+      // if (Tok.is(tok::l_paren)) {
+      //   ExprList Exprs;
+      //   if (Tok.is(tok::l_paren)) {
+      //     advance();
+      //     if (Tok.isOneOf(tok::l_paren, tok::plus,
+      //                     tok::minus,
+      //                     tok::identifier,
+      //                     tok::integer_literal)) {
+      //       if (parseExpList(Exprs))
+      //         goto _error;
+      //     }
+      //     if (consume(tok::r_paren))
+      //       goto _error;
+      //   }
+      //   Actions.actOnProcCall(Stmts, Loc, D, Exprs);
+      // }
     } else if (Tok.is(tok::kw_if)) {
       if (parseIfStatement(Stmts))
         goto _error;
@@ -285,13 +350,13 @@ bool Parser::parseLoopStatement(StmtList &Stmts) {
       goto _error;
     if (parseExpression(E))
       goto _error;
-    if (consume(tok::kw_DO))
+    if (consume(tok::kw_begin))
       goto _error;
     if (parseStatementSequence(LoopStmts))
       goto _error;
     if (expect(tok::kw_end))
       goto _error;
-    Actions.actOnWhileStatement(Stmts, Loc, E, LoopStmts);
+    Actions.actOnLoopStatement(Stmts, Loc, E, LoopStmts);
     advance();
     return false;
   }
@@ -350,8 +415,7 @@ bool Parser::parseExpression(Expr *&E) {
   }
 _error:
   while (!Tok.isOneOf(tok::r_paren, tok::comma, tok::semi,
-                      tok::kw_begin, tok::kw_else, tok::kw_end,
-                      tok::kw_begin)) {
+                      tok::kw_begin, tok::kw_else, tok::kw_end)) {
     advance();
     if (Tok.is(tok::eof))
       return true;
@@ -422,7 +486,7 @@ bool Parser::parseSimpleExpression(Expr *&E) {
   }
 _error:
   while (!Tok.isOneOf(
-      tok::r_paren, tok::comma, tok::semi,
+      tok::r_paren, tok::comma, tok::semi, tok::kw_begin,
       tok::less, tok::lessequal, tok::equal, tok::greater,
       tok::greaterequal, tok::kw_else,
       tok::kw_end, tok::kw_begin)) {
@@ -465,8 +529,8 @@ bool Parser::parseTerm(Expr *&E) {
   {
     if (parsePower(E))
       goto _error;
-    while (Tok.isOneOf(tok::star, tok::slash, tok::kw_and,
-                       tok::kw_div, tok::kw_mod)) {
+    while (Tok.isOneOf(tok::star, tok::slash, 
+                       tok::kw_and, tok::mod)) {
       OperatorInfo Op;
       Expr *Right = nullptr;
       if (parseMulOperator(Op))
@@ -482,7 +546,7 @@ _error:
                       tok::comma, tok::minus, tok::semi,
                       tok::less, tok::lessequal, tok::equal,
                       tok::greater, tok::greaterequal,
-                      tok::kw_DO, tok::kw_else, tok::kw_end,
+                      tok::kw_begin, tok::kw_else, tok::kw_end,
                       tok::kw_or, tok::kw_begin)) {
     advance();
     if (Tok.is(tok::eof))
@@ -499,10 +563,7 @@ bool Parser::parseMulOperator(OperatorInfo &Op) {
     } else if (Tok.is(tok::slash)) {
       Op = fromTok(Tok);
       advance();
-    } else if (Tok.is(tok::kw_div)) {
-      Op = fromTok(Tok);
-      advance();
-    } else if (Tok.is(tok::kw_mod)) {
+    } else if (Tok.is(tok::mod)) {
       Op = fromTok(Tok);
       advance();
     } else if (Tok.is(tok::kw_and)) {
@@ -534,26 +595,17 @@ bool Parser::parseFactor(Expr *&E) {
     } else if (Tok.is(tok::identifier)) {
       Decl *D;
       ExprList Exprs;
-      if (Tok.is(tok::l_paren)) {
-        advance();
-        if (Tok.isOneOf(tok::l_paren, tok::plus, tok::minus,
-                        tok::identifier, tok::integer_literal)) {
-          if (parseExpList(Exprs))
-            goto _error;
-        }
-        if (expect(tok::r_paren))
-          goto _error;
-        E = Actions.actOnFunctionCall(D, Exprs);
-        advance();
-      } else if (Tok.isOneOf(
+      if (parseEqualOps(D))
+        goto _error;
+      if (Tok.isOneOf(
                      tok::r_paren, tok::star,
                      tok::plus, tok::comma, tok::minus,
                      tok::slash, tok::semi, tok::less,
                      tok::lessequal, tok::equal,
                      tok::greater, tok::greaterequal,
-                     tok::kw_and, tok::kw_div,
-                     tok::kw_else, tok::kw_end, tok::kw_mod,
-                     tok::kw_or, tok::kw_begin)) {
+                     tok::kw_and, tok::kw_begin,
+                     tok::kw_else, tok::kw_end, tok::mod,
+                     tok::kw_or, tok::kw_elif)) {
         E = Actions.actOnVariable(D);
       }
     } else if (Tok.is(tok::l_paren)) {
@@ -570,12 +622,12 @@ bool Parser::parseFactor(Expr *&E) {
   }
 _error:
   while (!Tok.isOneOf(
-      tok::hash, tok::r_paren, tok::star, tok::plus,
+      tok::r_paren, tok::star, tok::plus,
       tok::comma, tok::minus, tok::slash, tok::semi,
       tok::less, tok::lessequal, tok::equal, tok::greater,
-      tok::greaterequal, tok::kw_and, tok::kw_div,
-      tok::kw_else, tok::kw_end, tok::kw_mod,
-      tok::kw_or, tok::kw_begin)) {
+      tok::greaterequal, tok::kw_and,tok::kw_begin, 
+      tok::kw_else, tok::kw_end, tok::mod,
+      tok::kw_or, tok::kw_elif)) {
     advance();
     if (Tok.is(tok::eof))
       return true;
@@ -591,25 +643,16 @@ bool Parser::parseEqualOps(Decl *&D) {
     D = Actions.actOnQualIdentPart(D, Tok.getLocation(),
                                    Tok.getIdentifier());
     advance();
-    while (Tok.is(tok::period) &&
-           (isa<ModuleDeclaration>(D))) {
-      advance();
-      if (expect(tok::identifier))
-        goto _error;
-      D = Actions.actOnQualIdentPart(D, Tok.getLocation(),
-                                     Tok.getIdentifier());
-      advance();
-    }
     return false;
   }
 _error:
   while (!Tok.isOneOf(
-      tok::hash, tok::l_paren, tok::r_paren, tok::star,
+      tok::l_paren, tok::r_paren, tok::star,
       tok::plus, tok::comma, tok::minus, tok::slash,
-      tok::colonequal, tok::semi, tok::less, tok::lessequal,
+      tok::semi, tok::less, tok::lessequal,
       tok::equal, tok::greater, tok::greaterequal,
-      tok::kw_and, tok::kw_div, tok::kw_else,
-      tok::kw_end, tok::kw_mod, tok::kw_or, tok::kw_begin)) {
+      tok::kw_and, tok::kw_else, tok::kw_begin, 
+      tok::kw_end, tok::kw_or, tok::kw_begin)) {
     advance();
     if (Tok.is(tok::eof))
       return true;

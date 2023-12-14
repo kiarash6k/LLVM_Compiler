@@ -1,14 +1,14 @@
-#ifndef TINYLANG_PARSER_PARSER_H
-#define TINYLANG_PARSER_PARSER_H
+#ifndef COMP_PARSER_PARSER_H
+#define COMP_PARSER_PARSER_H
 
-#include "tinylang/Basic/Diagnostic.h"
-#include "tinylang/Lexer/Lexer.h"
-#include "tinylang/Sema/Sema.h"
+#include "comp/Basic/Diagnostic.h"
+#include "comp/Lexer/Lexer.h"
+#include "comp/Sema/Sema.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/raw_ostream.h"
 
-namespace tinylang {
+namespace comp {
 
 class Parser {
 
@@ -49,12 +49,14 @@ class Parser {
     return true;
   }
 
-  bool parsePower(Expr *&E)
+  bool parsePower(Expr *&E);
   bool parseImport();
+  bool parseCompilationUnit(ModuleDeclaration *&D);
   bool parseBlock(DeclList &Decls, StmtList &Stmts);
   bool parseDeclaration(DeclList &Decls);
   bool parseVariableDeclaration(DeclList &Decls);
   bool parseFormalParameterList(FormalParamList &Params);
+  bool parseFormalParameter(FormalParamList &Params);
   bool parseStatementSequence(StmtList &Stmts);
   bool parseStatement(StmtList &Stmts);
   bool parseIfStatement(StmtList &Stmts);
@@ -66,6 +68,7 @@ class Parser {
   bool parseAddOperator(OperatorInfo &Op);
   bool parseTerm(Expr *&E);
   bool parseMulOperator(OperatorInfo &Op);
+  bool parseFactor(Expr *&E);
   bool parseEqualOps(Decl *&D);
   bool parseIdentList(IdentList &Ids);
 
@@ -74,5 +77,5 @@ public:
 
   ModuleDeclaration *parse();
 };
-} // namespace tinylang
+} // namespace comp
 #endif
