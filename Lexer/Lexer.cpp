@@ -1,6 +1,6 @@
-#include "tinylang/Lexer/Lexer.h"
+#include "comp/Lexer/Lexer.h"
 
-using namespace tinylang;
+using namespace comp;
 
 void KeywordFilter::addKeyword(StringRef Keyword,
                                tok::TokenKind TokenCode) {
@@ -10,7 +10,7 @@ void KeywordFilter::addKeyword(StringRef Keyword,
 void KeywordFilter::addKeywords() {
 #define KEYWORD(NAME, FLAGS)                               \
   addKeyword(StringRef(#NAME), tok::kw_##NAME);
-#include "tinylang/Basic/TokenKinds.def"
+#include "comp/Basic/TokenKinds.def"
 }
 
 namespace charinfo {
@@ -76,10 +76,6 @@ void Lexer::next(Token &Result) {
     formToken(Result, CurPtr + 1, tok);                    \
     break
       CASE('=', tok::equal);
-      CASE('+', tok::plus);
-      CASE('-', tok::minus);
-      CASE('*', tok::star);
-      CASE('/', tok::slash);
       CASE(',', tok::comma);
       CASE(';', tok::semi);
       CASE(')', tok::r_paren);
@@ -186,7 +182,6 @@ void Lexer::string(Token &Result) {
     Diags.report(getLoc(),
                  diag::err_unterminated_char_or_string);
   }
-  formToken(Result, End + 1, tok::string_literal);
 }
 
 void Lexer::comment() {

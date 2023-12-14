@@ -1,15 +1,15 @@
-#ifndef TINYLANG_LEXER_LEXER_H
-#define TINYLANG_LEXER_LEXER_H
+#ifndef COMP_LEXER_LEXER_H
+#define COMP_LEXER_LEXER_H
 
-#include "tinylang/Basic/Diagnostic.h"
-#include "tinylang/Basic/LLVM.h"
-#include "tinylang/Lexer/Token.h"
+#include "comp/Basic/Diagnostic.h"
+#include "comp/Basic/LLVM.h"
+#include "comp/Lexer/Token.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/SourceMgr.h"
 
-namespace tinylang {
+namespace comp {
 
 class KeywordFilter {
   llvm::StringMap<tok::TokenKind> HashTable;
@@ -73,5 +73,5 @@ private:
   void formToken(Token &Result, const char *TokEnd,
                  tok::TokenKind Kind);
 };
-} // namespace tinylang
+} // namespace comp
 #endif

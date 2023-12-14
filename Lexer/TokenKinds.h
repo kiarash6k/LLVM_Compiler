@@ -1,9 +1,9 @@
-#ifndef TINYLANG_BASIC_TOKENKINDS_H
-#define TINYLANG_BASIC_TOKENKINDS_H
+#ifndef COMP_BASIC_TOKENKINDS_H
+#define COMP_BASIC_TOKENKINDS_H
 
 #include "llvm/Support/Compiler.h"
 
-namespace tinylang {
+namespace comp {
 
 namespace tok {
 enum TokenKind : unsigned short {
@@ -20,6 +20,6 @@ getPunctuatorSpelling(TokenKind Kind) LLVM_READNONE;
 const char *
 getKeywordSpelling(TokenKind Kind) LLVM_READNONE;
 } // namespace tok
-} // namespace tinylang
+} // namespace comp
 
 #endif
